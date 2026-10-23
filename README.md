@@ -24,10 +24,17 @@ O `mode:` é obrigatório. Escolha pelo tipo de lista, não pela aparência:
 
 ## Usar num app
 
-- XcodeGen (`project.yml`): `packages: GabeKit: path: ../GabeKit` e, no
-  target, `- package: GabeKit` com `product: LiquidGlassPicker`.
-- Projeto Xcode: File › Add Package Dependencies › Add Local… e escolher esta
-  pasta.
+- XcodeGen (`project.yml`): `packages: GabeKit: url:
+  https://github.com/gabealves-jpg/GabeKit` com `from: <versão>` e, no
+  target, `- package: GabeKit` com `product: <Produto>`.
+- Projeto Xcode: File › Add Package Dependencies, colar a URL e escolher a
+  regra "Up to Next Major".
+
+Para mexer no pacote vendo o resultado num app, aponte o app para
+`path: ../GabeKit` (XcodeGen) ou arraste esta pasta para o projeto no Xcode,
+que passa a usar a cópia local. Ao terminar: commit e tag nova aqui
+(`git tag 0.2.0 && git push --tags`), e o app volta para `url:` com o
+`from` atualizado. Nenhum app faz commit apontando para `path:`.
 
 Componente novo: pasta em `Sources/<Produto>/`, `.library` e `.target` no
 `Package.swift`, tipos e inits `public`, e nenhuma dependência de um app
