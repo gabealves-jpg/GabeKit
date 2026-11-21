@@ -15,6 +15,11 @@ import UIKit
 ///   com a escolha: meses, semanas, anos. Passe só a janela em volta da
 ///   escolhida (ex.: mês anterior, atual e seguinte). Com uma lista fixa e
 ///   curta, este modo deixa a cápsula vazia de um lado — use `.fixed`.
+/// - `.scrollable`: barra de rolagem livre, alinhada à esquerda, com cada
+///   chip na largura do próprio texto. Para listas abertas, de tamanho
+///   variável ou definidas pelo usuário (filtros, categorias): a fileira rola
+///   na horizontal quando não cabe e traz a escolhida para dentro da
+///   cápsula; quando cabe, a cápsula abraça as opções a partir da esquerda.
 ///
 /// Nasceu no seletor de meses da Início do Cashola (`HomeMonthHeader`).
 public struct LiquidGlassPicker<Value: Hashable>: View {
@@ -35,6 +40,8 @@ public struct LiquidGlassPicker<Value: Hashable>: View {
         /// (`isCollapsed`), a cápsula encolhe até o chip escolhido e qualquer
         /// toque chama `onExpand`.
         case scrolling(isCollapsed: Bool = false, onExpand: (() -> Void)? = nil)
+        /// Fileira alinhada à esquerda que rola livremente na horizontal.
+        case scrollable
     }
 
     private let title: String
@@ -51,6 +58,9 @@ public struct LiquidGlassPicker<Value: Hashable>: View {
     @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
     @Environment(\.colorScheme) private var colorScheme
     @Namespace private var selectionAnimation
+    /// Largura natural da fileira no modo `.scrollable`, para a cápsula
+    /// abraçar as opções quando elas cabem.
+    @State private var scrollableContentWidth: CGFloat?
 
     private static var controlHeight: CGFloat { 44 }
     private static var chipHeight: CGFloat { 36 }
@@ -58,6 +68,7 @@ public struct LiquidGlassPicker<Value: Hashable>: View {
     private static var chipSpacing: CGFloat { 4 }
     private static var chipPadding: CGFloat { 14 }
     private static var selectedChipPadding: CGFloat { 28 }
+    private static var scrollableChipPadding: CGFloat { 16 }
     private static var font: UIFont { .systemFont(ofSize: 15, weight: .semibold) }
     private static var animation: Animation { .spring(response: 0.34, dampingFraction: 0.84) }
 
@@ -115,6 +126,8 @@ public struct LiquidGlassPicker<Value: Hashable>: View {
                 fixedBody
             case .scrolling:
                 scrollingBody
+            case .scrollable:
+                scrollableBody
             }
         }
         .frame(height: Self.controlHeight)
@@ -179,6 +192,40 @@ public struct LiquidGlassPicker<Value: Hashable>: View {
         }
     }
 
+    // MARK: - Scrollable
+
+    private var scrollableBody: some View {
+        let selectedIndex = selectedIndex
+        return ScrollViewReader { proxy in
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: Self.chipSpacing) {
+                    ForEach(options.indices, id: \.self) { index in
+                        chip(options[index], isSelected: index == selectedIndex, fillsWidth: false)
+                            .id(index)
+                    }
+                }
+                .padding(.horizontal, Self.inset)
+                .frame(height: Self.controlHeight)
+                .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width in
+                    scrollableContentWidth = width
+                }
+            }
+            .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
+            .clipShape(Capsule(style: .continuous))
+            .background { background }
+            .frame(maxWidth: scrollableContentWidth ?? .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .onAppear {
+                proxy.scrollTo(selectedIndex, anchor: .center)
+            }
+            .onChange(of: selectedIndex) { _, newIndex in
+                withAnimation(reducesMotion ? nil : Self.animation) {
+                    proxy.scrollTo(newIndex, anchor: .center)
+                }
+            }
+        }
+    }
+
     // MARK: - Peças
 
     @ViewBuilder
@@ -196,6 +243,14 @@ public struct LiquidGlassPicker<Value: Hashable>: View {
                 .glassEffect(.regular, in: Capsule(style: .continuous))
                 .shadow(color: .black.opacity(colorScheme == .dark ? 0.22 : 0.10), radius: 8, y: 3)
         }
+    }
+
+    private func chipHorizontalPadding(isSelected: Bool, fillsWidth: Bool) -> CGFloat {
+        if fillsWidth { return 8 }
+        // Na fileira livre a largura não muda com a escolha: senão os chips
+        // vizinhos pulam a cada toque.
+        if case .scrollable = mode { return Self.scrollableChipPadding }
+        return isSelected ? Self.selectedChipPadding : Self.chipPadding
     }
 
     private func chip(_ option: Option, isSelected: Bool, fillsWidth: Bool) -> some View {
@@ -217,7 +272,7 @@ public struct LiquidGlassPicker<Value: Hashable>: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.82)
                 .allowsTightening(true)
-                .padding(.horizontal, fillsWidth ? 8 : (isSelected ? Self.selectedChipPadding : Self.chipPadding))
+                .padding(.horizontal, chipHorizontalPadding(isSelected: isSelected, fillsWidth: fillsWidth))
                 .frame(maxWidth: fillsWidth ? .infinity : nil)
                 .frame(height: Self.chipHeight)
                 .background {

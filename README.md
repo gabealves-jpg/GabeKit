@@ -15,12 +15,17 @@ O `mode:` é obrigatório. Escolha pelo tipo de lista, não pela aparência:
 | --- | --- | --- |
 | Fechada e curta (2–4 opções que cabem na largura) | `.fixed` | Semana / Mês / Ano; Entradas / Saídas |
 | Sequência contínua, só a vizinhança importa | `.scrolling` | Mês anterior / atual / seguinte |
+| Aberta, variável ou criada pelo usuário | `.scrollable` | Filtros da Biblioteca do Pagr |
 
 - `.fixed` divide a cápsula em partes iguais e o chip desliza até a opção
   tocada. Nada sai pelas bordas.
 - `.scrolling` mantém a escolhida no centro. Passe só a janela em volta dela
   e recalcule a cada escolha; com uma lista fixa e curta ele deixa a cápsula
   vazia de um lado. Só ele recolhe (`.scrolling(isCollapsed:onExpand:)`).
+- `.scrollable` alinha a fileira à esquerda, com cada chip na largura do
+  texto, e rola livremente na horizontal quando não cabe; trocar a escolha
+  traz o chip para dentro da cápsula. Se as opções cabem, a cápsula abraça
+  só elas.
 
 ## Usar num app
 
